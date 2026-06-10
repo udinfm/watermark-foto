@@ -104,10 +104,12 @@ const tileCache = new Map();
 async function fetchTile(z, x, y) {
   const key = `${z}/${x}/${y}`;
   if (tileCache.has(key)) return tileCache.get(key);
+  // Menggunakan CARTO tile — lebih permissif untuk automated access
+  const url = `https://a.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`;
   try {
-    const { data } = await axios.get(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`, {
+    const { data } = await axios.get(url, {
       responseType: 'arraybuffer',
-      headers: { 'User-Agent': 'watermark-foto/1.0', 'Referer': 'https://openstreetmap.org' },
+      headers: { 'User-Agent': 'watermark-foto/1.0' },
       timeout: 10000
     });
     const buf = Buffer.from(data);

@@ -16,38 +16,37 @@ async function buildPanel(width, panelH, mapBuf, mapSz, loc, lat, lon, dateStr) 
   const charsName = Math.max(10, Math.floor(textW / (nameSize  * 0.58)));
   const charsSml  = Math.max(10, Math.floor(textW / (smallSize * 0.55)));
 
+  // Anchor koordinat & tanggal ke posisi tetap dari bawah — selalu tampil
+  const dateY  = panelH - pad;
+  const coordY = dateY - lineH2;
+
   const elems = [];
   let y = pad + nameSize;
 
-  // Nama lokasi — bold putih
-  for (const line of wrapText(loc.name, charsName)) {
+  // Nama lokasi — bold putih (maks 2 baris)
+  for (const line of wrapText(loc.name, charsName).slice(0, 2)) {
     elems.push(`<text x="${textX}" y="${y}" font-family="Arial,Helvetica,sans-serif" font-size="${nameSize}" font-weight="bold" fill="white">${escXml(line)}</text>`);
     y += lineH1;
   }
   y += smallSize * 0.4;
 
-  // Alamat lengkap — abu-abu
+  // Alamat lengkap — berhenti sebelum area koordinat
+  const maxAddrY = coordY - smallSize * 1.8;
   for (const line of wrapText(loc.full, charsSml)) {
-    if (y + smallSize > panelH - pad * 2.5) break;
+    if (y + smallSize > maxAddrY) break;
     elems.push(`<text x="${textX}" y="${y}" font-family="Arial,Helvetica,sans-serif" font-size="${smallSize}" fill="#bbbbbb">${escXml(line)}</text>`);
     y += lineH2;
   }
-  y += smallSize * 0.3;
 
-  // Koordinat
-  if (y + smallSize <= panelH - pad) {
-    elems.push(`<text x="${textX}" y="${y}" font-family="Arial,Helvetica,sans-serif" font-size="${smallSize}" fill="#999999">Lat ${lat.toFixed(6)}° Long ${lon.toFixed(6)}°</text>`);
-    y += lineH2;
-  }
+  // Koordinat — posisi fixed dari bawah
+  elems.push(`<text x="${textX}" y="${coordY}" font-family="Arial,Helvetica,sans-serif" font-size="${smallSize}" fill="#999999">Lat ${lat.toFixed(6)}° Long ${lon.toFixed(6)}°</text>`);
 
-  // Tanggal & waktu
-  if (y + smallSize <= panelH - pad) {
-    elems.push(`<text x="${textX}" y="${y}" font-family="Arial,Helvetica,sans-serif" font-size="${smallSize}" fill="#999999">${escXml(dateStr)}</text>`);
-  }
+  // Tanggal & waktu — posisi fixed paling bawah
+  elems.push(`<text x="${textX}" y="${dateY}" font-family="Arial,Helvetica,sans-serif" font-size="${smallSize}" fill="#999999">${escXml(dateStr)}</text>`);
 
-  // Atribusi OSM — pojok kanan bawah
+  // Atribusi — pojok kanan bawah
   const attrSz = Math.round(smallSize * 0.65);
-  elems.push(`<text x="${width - pad}" y="${panelH - Math.round(pad * 0.4)}" text-anchor="end" font-family="Arial,Helvetica,sans-serif" font-size="${attrSz}" fill="#555555">© OpenStreetMap contributors</text>`);
+  elems.push(`<text x="${width - pad}" y="${dateY}" text-anchor="end" font-family="Arial,Helvetica,sans-serif" font-size="${attrSz}" fill="#555555">© OpenStreetMap contributors</text>`);
 
   const svg = `<svg width="${width}" height="${panelH}" xmlns="http://www.w3.org/2000/svg">\n  ${elems.join('\n  ')}\n</svg>`;
 
