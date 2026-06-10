@@ -24,7 +24,7 @@ export function scanPhotos(dir) {
 // ---------------------------------------------------------------------------
 
 export async function readExif(filePath) {
-  const data = await exifr.parse(filePath, { gps: true, pick: ['DateTimeOriginal'] });
+  const data = await exifr.parse(filePath, { gps: true });
   return {
     lat:      data?.latitude        ?? null,
     lon:      data?.longitude       ?? null,
