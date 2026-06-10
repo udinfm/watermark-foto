@@ -5,6 +5,18 @@ import { readExif, reverseGeocode, fetchMapThumbnail, formatDate, escXml, wrapTe
 // Panel builder
 // ---------------------------------------------------------------------------
 
+/**
+ * Render panel gelap berisi thumbnail peta + teks info lokasi dalam format SVG composite.
+ * @param {number} width   - Lebar panel (sama dengan lebar foto asli)
+ * @param {number} panelH  - Tinggi panel dalam piksel
+ * @param {Buffer} mapBuf  - Buffer PNG thumbnail peta dari fetchMapThumbnail
+ * @param {number} mapSz   - Ukuran peta (lebar = tinggi, persegi)
+ * @param {{name: string, full: string}} loc - Nama & alamat lokasi dari reverseGeocode
+ * @param {number} lat     - Latitude untuk ditampilkan di panel
+ * @param {number} lon     - Longitude untuk ditampilkan di panel
+ * @param {string} dateStr - Tanggal & waktu yang sudah diformat (dari formatDate)
+ * @returns {Promise<Buffer>} Buffer PNG panel siap ditempel ke foto
+ */
 async function buildPanel(width, panelH, mapBuf, mapSz, loc, lat, lon, dateStr) {
   const pad       = Math.round(panelH * 0.07);
   const textX     = mapSz + pad;
@@ -67,6 +79,14 @@ async function buildPanel(width, panelH, mapBuf, mapSz, loc, lat, lon, dateStr) 
 // Proses satu foto
 // ---------------------------------------------------------------------------
 
+/**
+ * Proses satu foto: baca EXIF → geocode → ambil peta → buat panel → tempel ke foto.
+ * @param {string} inputPath  - Path foto sumber
+ * @param {string} outputPath - Path foto hasil (akan dibuat/ditimpa)
+ * @param {{panel: number, zoom: number, lang: string}} cfg - Konfigurasi dari promptConfig
+ * @returns {Promise<void>}
+ * @throws {Error} Jika foto tidak memiliki data GPS di EXIF
+ */
 export async function processPhoto(inputPath, outputPath, cfg) {
   const exifData = await readExif(inputPath);
   if (exifData.lat == null) throw new Error('Tidak ada data GPS di EXIF');

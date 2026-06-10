@@ -2,6 +2,10 @@ import inquirer from 'inquirer';
 import fs from 'fs';
 import path from 'path';
 
+/**
+ * Tampilkan pertanyaan interaktif untuk konfigurasi awal proses.
+ * @returns {Promise<{input: string, output: string, panel: number, zoom: number, lang: string}>}
+ */
 export async function promptConfig() {
   const answers = await inquirer.prompt([
     {
@@ -55,6 +59,11 @@ export async function promptConfig() {
   return answers;
 }
 
+/**
+ * Tampilkan konfirmasi sebelum mulai memproses foto.
+ * @param {number} total - Jumlah foto yang akan diproses
+ * @returns {Promise<boolean>} true jika user menyetujui
+ */
 export async function promptConfirm(total) {
   const { confirmed } = await inquirer.prompt([
     {

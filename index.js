@@ -7,6 +7,7 @@ import fs from 'fs';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+/** Entry point — orkestrasi seluruh alur dari konfigurasi hingga output foto. */
 async function main() {
   try {
     console.log(chalk.cyan.bold('\n=== Watermark Foto — GPS Overlay Tool ===\n'));

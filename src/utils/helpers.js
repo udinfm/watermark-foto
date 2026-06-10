@@ -15,6 +15,11 @@ export const sleep = ms => new Promise(r => setTimeout(r, ms));
 // File scan
 // ---------------------------------------------------------------------------
 
+/**
+ * Scan folder dan kembalikan daftar file JPEG yang ditemukan.
+ * @param {string} dir - Path absolut ke folder sumber
+ * @returns {string[]} Array nama file (bukan path penuh)
+ */
 export function scanPhotos(dir) {
   return fs.readdirSync(dir).filter(f => /\.(jpe?g)$/i.test(f));
 }
@@ -23,6 +28,11 @@ export function scanPhotos(dir) {
 // EXIF
 // ---------------------------------------------------------------------------
 
+/**
+ * Baca koordinat GPS dan waktu pengambilan dari metadata EXIF foto.
+ * @param {string} filePath - Path absolut ke file foto
+ * @returns {Promise<{lat: number|null, lon: number|null, datetime: Date|string|null}>}
+ */
 export async function readExif(filePath) {
   const data = await exifr.parse(filePath, { gps: true });
   return {
@@ -36,6 +46,11 @@ export async function readExif(filePath) {
 // Date formatting
 // ---------------------------------------------------------------------------
 
+/**
+ * Parse tanggal dari EXIF ke objek Date. Format EXIF: "YYYY:MM:DD HH:MM:SS".
+ * @param {string|Date|null} dt
+ * @returns {Date|null}
+ */
 export function parseExifDate(dt) {
   if (!dt) return null;
   if (dt instanceof Date) return dt;
@@ -44,6 +59,13 @@ export function parseExifDate(dt) {
   return new Date(dt);
 }
 
+/**
+ * Format tanggal ke string yang ditampilkan di panel watermark.
+ * Contoh output: "Senin, 09/06/2026 09:30 GMT+07:00"
+ * @param {string|Date|null} dt   - Tanggal dari EXIF
+ * @param {'id'|'en'} lang        - Bahasa nama hari
+ * @returns {string} String kosong jika tanggal tidak valid
+ */
 export function formatDate(dt, lang) {
   const d = parseExifDate(dt);
   if (!d || isNaN(d)) return '';
@@ -63,6 +85,15 @@ export function formatDate(dt, lang) {
 
 const geocodeCache = new Map();
 
+/**
+ * Konversi koordinat GPS ke nama lokasi & alamat lengkap via Nominatim (OpenStreetMap).
+ * Hasil di-cache per ~50m grid (4 desimal) untuk menghindari request duplikat.
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ * @returns {Promise<{name: string, full: string}>}
+ *   name = ringkas maks 3 bagian (contoh: "Pontianak Kota, Kalimantan Barat, Indonesia")
+ *   full = display_name lengkap dari Nominatim
+ */
 export async function reverseGeocode(lat, lon) {
   const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
   if (geocodeCache.has(key)) return geocodeCache.get(key);
@@ -91,6 +122,14 @@ export async function reverseGeocode(lat, lon) {
 // OSM tile fetching & stitching
 // ---------------------------------------------------------------------------
 
+/**
+ * Hitung nomor tile OSM (tx, ty) dan offset piksel (px, py) di dalam tile untuk koordinat tertentu.
+ * px/py = posisi titik koordinat di dalam tile (0–256), dipakai untuk crop yang presisi.
+ * @param {number} lat
+ * @param {number} lon
+ * @param {number} zoom
+ * @returns {{tx: number, ty: number, px: number, py: number}}
+ */
 function latLonToTileInfo(lat, lon, zoom) {
   const n    = 2 ** zoom;
   const xF   = (lon + 180) / 360 * n;
@@ -101,6 +140,13 @@ function latLonToTileInfo(lat, lon, zoom) {
 
 const tileCache = new Map();
 
+/**
+ * Download satu tile peta dari CARTO tile server. Hasil di-cache in-memory.
+ * @param {number} z - Zoom level
+ * @param {number} x - Nomor tile horizontal
+ * @param {number} y - Nomor tile vertikal
+ * @returns {Promise<Buffer|null>} Buffer PNG tile, atau null jika gagal diunduh
+ */
 async function fetchTile(z, x, y) {
   const key = `${z}/${x}/${y}`;
   if (tileCache.has(key)) return tileCache.get(key);
@@ -120,6 +166,14 @@ async function fetchTile(z, x, y) {
   }
 }
 
+/**
+ * Ambil thumbnail peta: stitch 3×3 tiles (768×768px) → crop di titik koordinat → resize ke ukuran target.
+ * @param {number} lat  - Latitude titik tengah peta
+ * @param {number} lon  - Longitude titik tengah peta
+ * @param {number} zoom - Zoom level (1–19; 14 = luas, 17 = detail)
+ * @param {number} size - Ukuran output dalam piksel (persegi)
+ * @returns {Promise<Buffer>} Buffer PNG hasil crop & resize
+ */
 export async function fetchMapThumbnail(lat, lon, zoom, size) {
   const TILE = 256;
   const GRID = 3;  // 3×3 tiles = 768×768px stitched
@@ -157,6 +211,11 @@ export async function fetchMapThumbnail(lat, lon, zoom, size) {
 // XML escape untuk SVG text
 // ---------------------------------------------------------------------------
 
+/**
+ * Escape karakter khusus XML agar aman dimasukkan ke dalam elemen SVG <text>.
+ * @param {string} s
+ * @returns {string}
+ */
 export function escXml(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
@@ -166,6 +225,12 @@ export function escXml(s) {
     .replace(/'/g, '&apos;');
 }
 
+/**
+ * Pecah teks panjang menjadi array baris sesuai batas karakter per baris.
+ * @param {string} text
+ * @param {number} maxChars - Maks karakter per baris
+ * @returns {string[]}
+ */
 export function wrapText(text, maxChars) {
   if (!text) return [];
   const words = text.split(' ');
