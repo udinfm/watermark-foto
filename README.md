@@ -104,7 +104,7 @@ Step 3: Memproses Foto
 |---------|-------------|
 | 1 | Baca koordinat GPS & waktu dari EXIF foto |
 | 2 | Kirim koordinat ke Nominatim → dapat nama lokasi & alamat |
-| 3 | Fetch 9 tile peta dari OpenStreetMap → stitch → crop di koordinat target |
+| 3 | Fetch 9 tile peta dari CARTO (data OpenStreetMap) → stitch → crop di koordinat target |
 | 4 | Render panel gelap: peta kiri + teks kanan (SVG) |
 | 5 | Tempel panel ke bagian bawah foto → simpan ke folder output |
 
