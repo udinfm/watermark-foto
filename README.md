@@ -1,8 +1,10 @@
 # Watermark Foto — GPS Overlay Tool
 
-Aplikasi CLI untuk menambahkan overlay informasi GPS ke foto JPEG, mirip dengan tampilan **GPS Map Camera**. Overlay berisi thumbnail peta, nama lokasi, alamat lengkap, koordinat, dan waktu pengambilan foto.
+Aplikasi CLI untuk menambahkan overlay informasi GPS ke foto JPEG, mirip tampilan **GPS Map Camera**. Data diambil otomatis dari EXIF foto, peta menggunakan **OpenStreetMap** (gratis, tanpa API key).
 
 ## Contoh Output
+
+Foto asli akan ditambahkan panel di bagian bawah seperti ini:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -10,31 +12,31 @@ Aplikasi CLI untuk menambahkan overlay informasi GPS ke foto JPEG, mirip dengan 
 │                    [ foto asli ]                        │
 │                                                         │
 ├──────────────┬──────────────────────────────────────────┤
-│              │  Nama Lokasi (bold)                      │
-│  [PETA OSM]  │  Alamat lengkap...                       │
-│              │  Lat -0.020472° Long 109.327086°         │
+│              │  Kecamatan Pontianak Kota,               │
+│  [PETA OSM]  │  Kalimantan Barat, Indonesia             │
+│              │  Jl. Khw. Hasyim No.249, Pontianak...   │
+│              │  Lat -0.020472°  Long 109.327086°        │
 │              │  Senin, 09/06/2026 09:30 GMT+07:00       │
 └──────────────┴──────────────────────────────────────────┘
 ```
 
-> Peta menggunakan **OpenStreetMap** (gratis, tanpa API key)
-
 ---
 
-## Struktur Folder
+## Struktur Aplikasi
 
 ```
-watermark-foto/          ← repo ini (folder apps/)
-├── src/
-│   └── index.js         ← main app
+apps/
+├── index.js               ← entry point, jalankan file ini
 ├── package.json
 ├── .gitignore
-└── README.md
-
-[di luar repo]
-├── sources/             ← foto sumber (input)
-├── hasil/               ← foto hasil (output)
-└── contoh/              ← contoh referensi output
+├── README.md
+└── src/
+    ├── cli/
+    │   └── prompts.js     ← pertanyaan interaktif ke user (inquirer)
+    ├── process/
+    │   └── watermark.js   ← logika overlay: buat panel + tempel ke foto
+    └── utils/
+        └── helpers.js     ← fungsi bantu: baca EXIF, geocode, fetch tile peta
 ```
 
 ---
@@ -48,7 +50,7 @@ cd apps
 npm install
 ```
 
-> Jika muncul error SSL (`UNABLE_TO_VERIFY_LEAF_SIGNATURE`), jalankan dulu:
+> Jika muncul error SSL (`UNABLE_TO_VERIFY_LEAF_SIGNATURE`):
 > ```bash
 > npm config set strict-ssl false
 > npm install
@@ -58,44 +60,32 @@ npm install
 
 ## Cara Pakai
 
-### Perintah dasar (dari root folder proyek)
+Jalankan dari dalam folder `apps/`:
 
 ```bash
-node apps/src/index.js --input sources --output hasil
+node index.js
 ```
 
-### Dari dalam folder `apps/`
+App akan menanyakan beberapa hal secara interaktif:
 
-```bash
-node src/index.js --input ../sources --output ../hasil
 ```
+Step 1: Konfigurasi
+? Folder foto sumber:                      → path ke folder berisi foto .jpg
+? Folder output:                           → path folder penyimpanan hasil
+? Tinggi panel bawah (% dari tinggi foto): → ukuran panel, default 28%
+? Zoom level peta OSM:                     → 14 = tampilan luas, 17 = lebih detail
+? Bahasa nama hari:                        → Indonesia atau English
 
-### Semua opsi
+Step 2: Scan Foto
+✓ Ditemukan 4 foto
 
-```bash
-node src/index.js [opsi]
-```
+? Proses 4 foto sekarang? → konfirmasi sebelum mulai
 
-| Opsi | Singkat | Default | Keterangan |
-|------|---------|---------|------------|
-| `--input` | `-i` | `sources` | Folder foto sumber |
-| `--output` | `-o` | `hasil` | Folder foto output |
-| `--panel` | `-p` | `28` | Tinggi panel bawah (% dari tinggi foto) |
-| `--zoom` | `-z` | `15` | Zoom level peta OSM (14–17 direkomendasikan) |
-| `--lang` | `-l` | `id` | Bahasa nama hari: `id` (Indonesia) atau `en` (English) |
-| `--help` | `-h` | — | Tampilkan bantuan |
-
-### Contoh penggunaan
-
-```bash
-# Default — panel 28%, bahasa Indonesia
-node src/index.js -i ../sources -o ../hasil
-
-# Panel lebih kecil, zoom lebih detail, bahasa Inggris
-node src/index.js -i ../sources -o ../hasil -p 20 -z 16 -l en
-
-# Tentukan folder lain
-node src/index.js --input D:/foto/liburan --output D:/foto/liburan-watermark
+Step 3: Memproses Foto
+[1/4] IMG_20260609_093037.jpg ... ✓ selesai
+[2/4] IMG_20260609_093104.jpg ... ✓ selesai
+...
+✓ Selesai!
 ```
 
 ---
@@ -103,27 +93,29 @@ node src/index.js --input D:/foto/liburan --output D:/foto/liburan-watermark
 ## Syarat Foto
 
 - Format: `.jpg` / `.jpeg`
-- Foto **harus memiliki data GPS di EXIF** (diambil dengan GPS aktif)
-- Foto tanpa GPS akan di-skip otomatis
+- Foto **harus diambil dengan GPS aktif** — data koordinat tersimpan di EXIF
+- Foto tanpa GPS akan di-skip otomatis dengan pesan error
 
 ---
 
-## Cara Kerja
+## Cara Kerja (Ringkas)
 
-1. **Baca EXIF** — ambil koordinat GPS dan waktu dari metadata foto
-2. **Reverse geocode** — kirim koordinat ke [Nominatim](https://nominatim.openstreetmap.org/) untuk dapat nama lokasi & alamat
-3. **Ambil peta** — fetch tile OpenStreetMap (3×3 grid), stitch, crop di koordinat target
-4. **Buat panel** — render panel gelap dengan peta + teks menggunakan SVG
-5. **Composite** — tempel panel ke bagian bawah foto, simpan ke folder output
+| Langkah | Yang Terjadi |
+|---------|-------------|
+| 1 | Baca koordinat GPS & waktu dari EXIF foto |
+| 2 | Kirim koordinat ke Nominatim → dapat nama lokasi & alamat |
+| 3 | Fetch 9 tile peta dari OpenStreetMap → stitch → crop di koordinat target |
+| 4 | Render panel gelap: peta kiri + teks kanan (SVG) |
+| 5 | Tempel panel ke bagian bawah foto → simpan ke folder output |
 
 ---
 
 ## Catatan
 
-- **Rate limit Nominatim:** 1 request/detik — untuk foto banyak, proses akan otomatis jeda antar foto
-- **Cache tile:** tile peta di-cache selama sesi berjalan, koordinat yang sama tidak di-fetch ulang
-- **Kualitas output:** JPEG 92%, EXIF metadata asli dipertahankan
-- **Atribusi:** output menyertakan teks `© OpenStreetMap contributors` sesuai lisensi ODbL
+- **Rate limit Nominatim:** maksimal 1 request/detik, app otomatis jeda antar foto
+- **Cache:** tile peta & hasil geocode di-cache, koordinat sama tidak di-fetch ulang
+- **Output:** JPEG kualitas 92%, metadata EXIF asli dipertahankan
+- **Atribusi:** output menyertakan `© OpenStreetMap contributors` sesuai lisensi ODbL
 
 ---
 
